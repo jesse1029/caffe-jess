@@ -13,6 +13,9 @@
 #include "caffe/util/io.hpp"
 #include "caffe/vision_layers.hpp"
 
+#include<iostream>
+#include<fstream>
+
 using caffe::Blob;
 using caffe::Caffe;
 using caffe::Datum;
@@ -135,17 +138,30 @@ int feature_extraction_pipeline(int argc, char** argv) {
   LOG(ERROR)<< "Extacting Features";
 
   Datum datum;
+  char filename[]="fea1.txt";
+  FILE * pFileTXT;
+  pFileTXT = fopen(filename,"w");// use "a" for append, "w" to overwrite, previous content will be deleted
+
+ 
   const int kMaxKeyStrLength = 100;
   char key_str[kMaxKeyStrLength];
   std::vector<Blob<float>*> input_vec;
   std::vector<int> image_indices(num_features, 0);
+  const shared_ptr<Blob<Dtype> > feature_blob = feature_extraction_net
+          ->blob_by_name(blob_names[0]);
+  int batch_size = feature_blob->num();
+  int dim_features = feature_blob->count() / batch_size;
+ 
+  //fprintf(pFileTXT,"Parameters: mini_batch=%d, batch=%d, num_fea=%d, dim_fea=%d \n", num_mini_batches, batch_size, (int)num_features, dim_features);
+  //fprintf(pFileTXT,"=========================================================\n");
   for (int batch_index = 0; batch_index < num_mini_batches; ++batch_index) {
     feature_extraction_net->Forward(input_vec);
+   
     for (int i = 0; i < num_features; ++i) {
-      const shared_ptr<Blob<Dtype> > feature_blob = feature_extraction_net
+      shared_ptr<Blob<Dtype> > feature_blob = feature_extraction_net
           ->blob_by_name(blob_names[i]);
-      int batch_size = feature_blob->num();
-      int dim_features = feature_blob->count() / batch_size;
+      batch_size = feature_blob->num();
+      dim_features = feature_blob->count() / batch_size;
       const Dtype* feature_blob_data;
       for (int n = 0; n < batch_size; ++n) {
         datum.set_height(feature_blob->height());
@@ -155,8 +171,10 @@ int feature_extraction_pipeline(int argc, char** argv) {
         datum.clear_float_data();
         feature_blob_data = feature_blob->cpu_data() +
             feature_blob->offset(n);
+			
         for (int d = 0; d < dim_features; ++d) {
           datum.add_float_data(feature_blob_data[d]);
+          fprintf(pFileTXT,"%F\n", feature_blob_data[d]);   
         }
         int length = snprintf(key_str, kMaxKeyStrLength, "%010d",
             image_indices[i]);
@@ -171,9 +189,11 @@ int feature_extraction_pipeline(int argc, char** argv) {
               " query images for feature blob " << blob_names[i];
         }
       }  // for (int n = 0; n < batch_size; ++n)
+      fprintf(pFileTXT, "\n");
     }  // for (int i = 0; i < num_features; ++i)
   }  // for (int batch_index = 0; batch_index < num_mini_batches; ++batch_index)
   // write the last batch
+   fclose (pFileTXT); // must close after opening
   for (int i = 0; i < num_features; ++i) {
     if (image_indices[i] % 1000 != 0) {
       txns.at(i)->Commit();

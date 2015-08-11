@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "boost/scoped_ptr.hpp"
-#include "hdf5.h"
+#include "hdf5/serial/hdf5.h"
 
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
@@ -321,6 +321,7 @@ class WindowDataLayer : public BasePrefetchingDataLayer<Dtype> {
   bool cache_images_;
   vector<std::pair<std::string, Datum > > image_database_cache_;
 };
+
 
 }  // namespace caffe
 
